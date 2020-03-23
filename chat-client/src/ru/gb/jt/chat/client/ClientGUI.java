@@ -95,7 +95,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } else if (src == btnLogin) {
             //убирать панельки хост, порт, логин, пароль
             connect();
-            btnDisconnect.setVisible(true);
             this.hideFieldsOnLogin();
         } else if (src == btnDisconnect) {
 //дисконект + отрисовка убранных панелей
@@ -103,6 +102,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
                 System.out.println("Disconnect");
                 showFieldsOnDisconnect();
                 isLogIn = false;
+                disconnect();
             }
         } else
             throw new RuntimeException("Unknown source: " + src);
@@ -136,6 +136,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
+    }
+
+    private void disconnect() {
+        putLog("Disconnect");
+        if (socketThread.isAlive())
+            socketThread.interrupt();
     }
 
     private void sendMessage() {
