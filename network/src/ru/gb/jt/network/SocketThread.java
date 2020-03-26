@@ -1,5 +1,7 @@
 package ru.gb.jt.network;
 
+import ru.gb.jt.chat.library.ChatParser;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -29,6 +31,7 @@ public class SocketThread extends Thread {
                 String msg = in.readUTF();
                 listener.onReceiveString(this, socket, msg);
             }
+            System.out.println("lets disconnect");
         } catch (IOException e) {
             listener.onSocketException(this, e);
         } finally {
@@ -39,7 +42,7 @@ public class SocketThread extends Thread {
 
     public synchronized boolean sendMessage(String msg) {
         try {
-            out.writeUTF(msg);
+            out.writeUTF(ChatParser.parseCommand(msg));
             out.flush();
             return true;
         } catch (IOException e) {
@@ -53,6 +56,7 @@ public class SocketThread extends Thread {
         interrupt();
         try {
             socket.close();
+
         } catch (IOException e) {
             listener.onSocketException(this, e);
         }

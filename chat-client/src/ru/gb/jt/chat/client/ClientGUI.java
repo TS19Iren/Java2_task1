@@ -1,5 +1,6 @@
 package ru.gb.jt.chat.client;
 
+import ru.gb.jt.chat.library.Library;
 import ru.gb.jt.network.SocketThread;
 import ru.gb.jt.network.SocketThreadListener;
 
@@ -57,13 +58,9 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         scrollUsers.setPreferredSize(new Dimension(100, 0));
         cbAlwaysOnTop.addActionListener(this);
         btnSend.addActionListener(this);
-        btnSend.setVisible(false);
         tfMessage.addActionListener(this);
-        tfMessage.setVisible(false);
         btnLogin.addActionListener(this);
-        //Добавляем прослушку кнопки Дисконект
         btnDisconnect.addActionListener(this);
-        btnDisconnect.setVisible(false);
 
         panelTop.add(tfIPAddress);
         panelTop.add(tfPort);
@@ -74,6 +71,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         panelBottom.add(btnDisconnect, BorderLayout.WEST);
         panelBottom.add(tfMessage, BorderLayout.CENTER);
         panelBottom.add(btnSend, BorderLayout.EAST);
+        panelBottom.setVisible(false);
 
         add(scrollLog, BorderLayout.CENTER);
         add(scrollUsers, BorderLayout.EAST);
@@ -83,8 +81,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         setVisible(true);
     }
 
-    private boolean isLogIn = false;
-
     @Override
     public void actionPerformed(ActionEvent e) {
         Object src = e.getSource();
@@ -93,64 +89,36 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } else if (src == btnSend || src == tfMessage) {
             sendMessage();
         } else if (src == btnLogin) {
-            //убирать панельки хост, порт, логин, пароль
             connect();
-            this.hideFieldsOnLogin();
         } else if (src == btnDisconnect) {
-//дисконект + отрисовка убранных панелей
-            if (isLogIn) {
-                System.out.println("Disconnect");
-                showFieldsOnDisconnect();
-                isLogIn = false;
-                disconnect();
-            }
-        } else
+            socketThread.close();
+        }
+        else
             throw new RuntimeException("Unknown source: " + src);
-    }
-
-    private void setVisibleForFields(boolean isVisible) {
-        btnLogin.setVisible(isVisible);
-        tfIPAddress.setVisible(isVisible);
-        tfPassword.setVisible(isVisible);
-        tfLogin.setVisible(isVisible);
-        tfPort.setVisible(isVisible);
-        tfMessage.setVisible(!isVisible);
-        btnSend.setVisible(!isVisible);
-        btnDisconnect.setVisible(!isVisible);
-    }
-
-    private void showFieldsOnDisconnect() {
-        setVisibleForFields(true);
-    }
-
-    private void hideFieldsOnLogin() {
-        setVisibleForFields(false);
-
     }
 
     private void connect() {
         try {
             Socket socket = new Socket(tfIPAddress.getText(), Integer.parseInt(tfPort.getText()));
             socketThread = new SocketThread(this, "Client", socket);
-            isLogIn = true;
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
     }
 
-    private void disconnect() {
-        putLog("Disconnect");
-        if (socketThread.isAlive())
-            socketThread.interrupt();
-    }
-
     private void sendMessage() {
         String msg = tfMessage.getText();
-        String username = tfLogin.getText();
         if ("".equals(msg)) return;
         tfMessage.setText(null);
         tfMessage.grabFocus();
         socketThread.sendMessage(msg);
+
+//        if (!"".equals(msg)) {
+//            tfMessage.setText(null);
+//            tfMessage.grabFocus();
+//            socketThread.sendMessage(msg);
+//        }
+
 //        putLog(String.format("%s: %s", username, msg));
 //        wrtMsgToLogFile(msg, username);
     }
@@ -197,7 +165,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     /**
      * Socket thread methods
-     */
+     * */
 
     @Override
     public void onSocketStart(SocketThread thread, Socket socket) {
@@ -207,11 +175,19 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void onSocketStop(SocketThread thread) {
         putLog("Stop");
+        panelBottom.setVisible(false);
+        panelTop.setVisible(true);
     }
 
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
         putLog("Ready");
+        panelBottom.setVisible(true);
+        panelTop.setVisible(false);
+        String login = tfLogin.getText();
+        String password = new String(tfPassword.getPassword());
+        thread.sendMessage(Library.getAuthRequest(login, password));
+
     }
 
     @Override
